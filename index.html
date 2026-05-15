@@ -10,6 +10,7 @@
             overflow: hidden; /* Prevents scrollbars */
             background-color: #87CEEB; /* Fallback background */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
         }
         #ui { 
             position: absolute; 
@@ -27,7 +28,7 @@
             border: none; 
             border-radius: 8px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: background 0.2s;
+            transition: background 0.2s, transform 0.1s;
         }
         button:hover {
             background: #ff6b81;
@@ -61,7 +62,7 @@
         // 1. SCENE SETUP
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB); // Sky blue
-        scene.fog = new THREE.Fog(0x87CEEB, 20, 150); // Add distance fog
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 200); // Distance fog
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         
@@ -84,38 +85,38 @@
         scene.add(dirLight);
 
         // 3. ENVIRONMENT (Ground & Grid)
-        const planeGeo = new THREE.PlaneGeometry(500, 500);
-        const planeMat = new THREE.MeshStandardMaterial({ color: 0x3e8e41 }); // Grass green
+        const planeGeo = new THREE.PlaneGeometry(1000, 1000);
+        const planeMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32 }); // Rich Grass green
         const plane = new THREE.Mesh(planeGeo, planeMat);
         plane.rotation.x = -Math.PI / 2;
         plane.receiveShadow = true;
         scene.add(plane);
 
-        const gridHelper = new THREE.GridHelper(500, 100, 0x000000, 0x000000);
-        gridHelper.material.opacity = 0.2;
+        const gridHelper = new THREE.GridHelper(1000, 200, 0x000000, 0x000000);
+        gridHelper.material.opacity = 0.15;
         gridHelper.material.transparent = true;
+        gridHelper.position.y = 0.01; // Avoid flickering with the ground
         scene.add(gridHelper);
 
-        // 4. CAR MODELS
+        // 4. CAR MODELS GENERATOR
         const carContainer = new THREE.Group();
         scene.add(carContainer);
-        const cars = []; // Array to hold our different cars
+        const cars = []; 
 
-        // Helper function to procedurally generate basic 3D cars
         function createCarGeometry(color, width, height, length, isSportsCar = false) {
             const group = new THREE.Group();
             
             // Car Body
             const bodyGeo = new THREE.BoxGeometry(width, height, length);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.6 });
+            const bodyMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.7 });
             const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = height / 2 + 0.4; // raise above ground
+            body.position.y = height / 2 + 0.4; 
             body.castShadow = true;
             group.add(body);
 
             // Car Cabin / Roof
             const cabinGeo = new THREE.BoxGeometry(width * 0.8, height * 0.8, length * 0.5);
-            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x222222 }); // Dark glass
+            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2 }); 
             const cabin = new THREE.Mesh(cabinGeo, cabinMat);
             cabin.position.y = height + 0.4;
             cabin.position.z = isSportsCar ? 0.2 : -0.2;
@@ -123,19 +124,19 @@
             group.add(cabin);
 
             // Wheels
-            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-            const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+            const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
             
             const positions = [
-                [width/2 + 0.15, 0.5, length/2 - 0.7],   // Front Left
-                [-width/2 - 0.15, 0.5, length/2 - 0.7],  // Front Right
-                [width/2 + 0.15, 0.5, -length/2 + 0.7],  // Back Left
-                [-width/2 - 0.15, 0.5, -length/2 + 0.7]  // Back Right
+                [width/2 + 0.1, 0.5, length/2 - 0.7],   // Front Left
+                [-width/2 - 0.1, 0.5, length/2 - 0.7],  // Front Right
+                [width/2 + 0.1, 0.5, -length/2 + 0.7],  // Back Left
+                [-width/2 - 0.1, 0.5, -length/2 + 0.7]  // Back Right
             ];
 
             positions.forEach(pos => {
                 const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-                wheel.rotation.z = Math.PI / 2; // Turn wheels upright
+                wheel.rotation.z = Math.PI / 2; 
                 wheel.position.set(pos[0], pos[1], pos[2]);
                 wheel.castShadow = true;
                 group.add(wheel);
@@ -145,44 +146,89 @@
         }
 
         // Create 3 different vehicles
-        cars.push(createCarGeometry(0xff0000, 2, 1, 4.5)); // Car 0: Red Sedan
-        cars.push(createCarGeometry(0x0055ff, 2.2, 0.7, 4.8, true)); // Car 1: Blue Sports Car
-        cars.push(createCarGeometry(0xffcc00, 2.4, 1.5, 5.5)); // Car 2: Yellow Truck
+        cars.push(createCarGeometry(0xff0000, 2, 1, 4.5)); // Red Sedan
+        cars.push(createCarGeometry(0x0055ff, 2.2, 0.7, 4.8, true)); // Blue Sports Car
+        cars.push(createCarGeometry(0xffcc00, 2.4, 1.5, 5.5)); // Yellow Truck
 
-        // Set initial car
+        // Initial car setup
         let currentCarIndex = 0;
         carContainer.add(cars[currentCarIndex]);
 
-        // Change Car Button Logic
+        // Change Car Logic
         document.getElementById('changeCarBtn').addEventListener('click', () => {
             carContainer.remove(cars[currentCarIndex]);
-            currentCarIndex = (currentCarIndex + 1) % cars.length; // Cycle through 0, 1, 2
+            currentCarIndex = (currentCarIndex + 1) % cars.length; 
             carContainer.add(cars[currentCarIndex]);
         });
 
         // 5. PHYSICS & CONTROLS
         let speed = 0;
-        const maxSpeed = 0.6;
-        const acceleration = 0.015;
-        const friction = 0.97; // Simulates air resistance and drag
+        const maxSpeed = 0.8;
+        const acceleration = 0.02;
+        const friction = 0.96; 
         const rotationSpeed = 0.04;
 
-        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+        const keys = {
+            w: false, a: false, s: false, d: false,
+            ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false
+        };
 
         window.addEventListener('keydown', (e) => {
-            if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+            if (e.key in keys) keys[e.key] = true;
         });
         window.addEventListener('keyup', (e) => {
-            if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+            if (e.key in keys) keys[e.key] = false;
         });
 
         // 6. ANIMATION LOOP
         function animate() {
             requestAnimationFrame(animate);
 
-            // Handle Acceleration & Braking
+            // Forward / Backward
             if (keys.w || keys.ArrowUp) speed += acceleration;
             if (keys.s || keys.ArrowDown) speed -= acceleration;
 
-            // Enforce Max Speed
-            if (speed > maxSpeed)
+            // Speed Limits
+            if (speed > maxSpeed) speed = maxSpeed;
+            if (speed < -maxSpeed / 2) speed = -maxSpeed / 2;
+
+            // Friction drag
+            speed *= friction;
+
+            // Steering Logic
+            if (Math.abs(speed) > 0.01) {
+                const direction = speed > 0 ? 1 : -1; 
+                if (keys.a || keys.ArrowLeft) carContainer.rotation.y += rotationSpeed * direction;
+                if (keys.d || keys.ArrowRight) carContainer.rotation.y -= rotationSpeed * direction;
+            }
+
+            // Update positions
+            carContainer.position.x -= Math.sin(carContainer.rotation.y) * speed;
+            carContainer.position.z -= Math.cos(carContainer.rotation.y) * speed;
+
+            // Camera Following Logic
+            const cameraOffset = new THREE.Vector3(
+                Math.sin(carContainer.rotation.y) * 15, 
+                7,                                      
+                Math.cos(carContainer.rotation.y) * 15
+            );
+            
+            const targetPos = carContainer.position.clone().add(cameraOffset);
+            camera.position.lerp(targetPos, 0.08); // Smooth camera movement
+            camera.lookAt(carContainer.position);
+
+            renderer.render(scene, camera);
+        }
+
+        // Window Resize Handling
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Run Game
+        animate();
+    </script>
+</body>
+</html>
